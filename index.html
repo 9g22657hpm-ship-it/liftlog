@@ -239,6 +239,14 @@ nav.bottom button.on{color:var(--volt);}
 .del-set{background:var(--s2);color:var(--red);border-radius:9px;
   width:38px;height:44px;font-size:20px;line-height:1;}
 
+.sets-quick-label{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:9px;}
+.sets-quick{display:flex;gap:8px;margin-bottom:16px;}
+.sq-btn{flex:1;background:var(--s2);color:var(--muted);font-size:17px;font-weight:900;
+  padding:13px 0;border-radius:11px;border:2px solid transparent;}
+.sq-btn.on{background:#1e2600;color:var(--volt);border-color:var(--volt);}
+.sq-btn:active{background:#1e2600;color:var(--volt);}
+
 .add-set-btn{width:100%;background:var(--s2);color:#f0f0f3;font-weight:800;
   padding:13px;border-radius:11px;font-size:13px;border:1px dashed var(--line);margin-top:4px;}
 .add-set-btn:active{color:var(--volt);border-color:var(--volt);}
@@ -405,9 +413,20 @@ nav.bottom button.on{color:var(--volt);}
       <div class="chips" id="last-chips"></div>
     </div>
 
+    <!-- Sets quick-picker -->
+    <div class="sets-quick-label">How many sets?</div>
+    <div class="sets-quick" id="sets-quick">
+      <button class="sq-btn" onclick="setCount(1)">1</button>
+      <button class="sq-btn" onclick="setCount(2)">2</button>
+      <button class="sq-btn on" onclick="setCount(3)">3</button>
+      <button class="sq-btn" onclick="setCount(4)">4</button>
+      <button class="sq-btn" onclick="setCount(5)">5</button>
+      <button class="sq-btn" onclick="setCount(6)">6</button>
+    </div>
+
     <div id="col-heads-wrap"></div>
     <div id="set-rows"></div>
-    <button class="add-set-btn" onclick="addSetRow()">+ Add set</button>
+    <button class="add-set-btn" onclick="addSetRow()">+ Add another set</button>
 
     <div class="note-label">Notes (optional)</div>
     <input class="note-input" id="ex-note" placeholder="How it felt, form cues…">
@@ -727,8 +746,54 @@ function openSetsStep(){
   showLastSession(picked.n);
   buildColHeads(picked.t);
   document.getElementById('set-rows').innerHTML='';
-  addSetRow();
+  // default 3 sets
+  setCount(3);
   showSets();
+}
+function setCount(n){
+  // highlight selected button
+  document.querySelectorAll('.sq-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.sq-btn')[n-1]?.classList.add('on');
+  // rebuild rows to exactly n sets, preserving existing values
+  const container=document.getElementById('set-rows');
+  const existing=container.querySelectorAll('.set-row-item');
+  const vals=[];
+  existing.forEach(r=>{
+    vals.push({w:r.querySelector('.w-in')?.value||'',r:r.querySelector('.r-in')?.value||''});
+  });
+  container.innerHTML='';
+  for(let i=0;i<n;i++){
+    addSetRowWith(vals[i]?.w||'',vals[i]?.r||'');
+  }
+}
+function addSetRowWith(prefW,prefR){
+  const container=document.getElementById('set-rows');
+  const n=container.querySelectorAll('.set-row-item').length+1;
+  const t=picked?picked.t:'bb';
+  const div=document.createElement('div');
+  div.className='set-row-item';div.style.marginBottom='8px';
+  if(t==='bw'){
+    div.innerHTML=`<div class="set-grid bw">
+      <div class="sn">${n}</div>
+      <input type="number" inputmode="numeric" placeholder="reps" class="r-in" min="1" value="${prefR}">
+      <button class="del-set" onclick="this.closest('.set-row-item').remove();renumber();syncQuick()">×</button>
+    </div>`;
+  }else{
+    div.innerHTML=`<div class="set-grid bb">
+      <div class="sn">${n}</div>
+      <input type="number" inputmode="decimal" placeholder="kg" class="w-in" min="0" step="0.5" value="${prefW}">
+      <input type="number" inputmode="numeric" placeholder="reps" class="r-in" min="1" value="${prefR}">
+      <button class="del-set" onclick="this.closest('.set-row-item').remove();renumber();syncQuick()">×</button>
+    </div>`;
+  }
+  container.appendChild(div);
+}
+function syncQuick(){
+  // update the highlight to match current row count
+  const n=document.querySelectorAll('#set-rows .set-row-item').length;
+  document.querySelectorAll('.sq-btn').forEach((b,i)=>{
+    b.classList.toggle('on',i===n-1);
+  });
 }
 function showLastSession(name){
   const prev=document.getElementById('last-prev');
@@ -757,31 +822,14 @@ function buildColHeads(t){
 }
 function addSetRow(){
   const container=document.getElementById('set-rows');
-  const n=container.querySelectorAll('.set-row-item').length+1;
-  const t=picked?picked.t:'bb';
-  const div=document.createElement('div');
-  div.className='set-row-item';
-  div.style.marginBottom='8px';
-  if(t==='bw'){
-    div.innerHTML=`<div class="set-grid bw">
-      <div class="sn">${n}</div>
-      <input type="number" inputmode="numeric" placeholder="reps" class="r-in" min="1">
-      <button class="del-set" onclick="this.closest('.set-row-item').remove();renumber()">×</button>
-    </div>`;
-  }else{
-    // prefill weight from last row
-    const rows=container.querySelectorAll('.set-row-item');
-    let prefW='';
-    if(rows.length){const lw=rows[rows.length-1].querySelector('.w-in');if(lw)prefW=lw.value;}
-    div.innerHTML=`<div class="set-grid bb">
-      <div class="sn">${n}</div>
-      <input type="number" inputmode="decimal" placeholder="kg" class="w-in" min="0" step="0.5" value="${prefW}">
-      <input type="number" inputmode="numeric" placeholder="reps" class="r-in" min="1">
-      <button class="del-set" onclick="this.closest('.set-row-item').remove();renumber()">×</button>
-    </div>`;
-  }
-  container.appendChild(div);
-  const focus=div.querySelector(t==='bw'?'.r-in':'.w-in');
+  const rows=container.querySelectorAll('.set-row-item');
+  let prefW='';
+  if(rows.length){const lw=rows[rows.length-1].querySelector('.w-in');if(lw)prefW=lw.value;}
+  addSetRowWith(prefW,'');
+  syncQuick();
+  const allRows=container.querySelectorAll('.set-row-item');
+  const last=allRows[allRows.length-1];
+  const focus=last?.querySelector(picked?.t==='bw'?'.r-in':'.w-in');
   if(focus)setTimeout(()=>focus.focus(),80);
 }
 function renumber(){
