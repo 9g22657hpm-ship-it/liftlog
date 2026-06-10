@@ -266,6 +266,24 @@ nav.bottom button.on{color:var(--volt);}
 .btn-ghost:active{color:var(--volt);}
 
 /* ── TOAST ── */
+
+/* ── TEMPLATES ── */
+.tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px;}
+.tmpl-card{background:var(--s2);border:1px solid var(--line);border-radius:12px;
+  padding:13px 12px;cursor:pointer;text-align:left;}
+.tmpl-card:active{border-color:var(--volt);background:var(--volt-bg, #1a2200);}
+.tmpl-card .tc-day{font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:4px;}
+.tmpl-card .tc-name{font-size:14px;font-weight:900;color:#f0f0f3;margin-bottom:5px;}
+.tmpl-card .tc-exs{font-size:11px;color:var(--muted);line-height:1.5;}
+.tmpl-card.legs .tc-day{color:var(--blue);}
+.tmpl-card.push .tc-day{color:var(--volt);}
+.tmpl-card.pull .tc-day{color:#ff4d6a;}
+.tmpl-sep{display:flex;align-items:center;gap:10px;margin:14px 0 12px;}
+.tmpl-sep span{font-size:10px;color:var(--muted);font-weight:800;
+  text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+.tmpl-sep:before,.tmpl-sep:after{content:'';flex:1;height:0.5px;background:var(--line);}
+
 .toast{position:fixed;bottom:calc(80px + var(--sb));left:50%;z-index:300;
   transform:translateX(-50%) translateY(10px);opacity:0;pointer-events:none;
   background:#f0f0f3;color:#0a0a0c;padding:11px 20px;border-radius:30px;
@@ -389,6 +407,13 @@ nav.bottom button.on{color:var(--volt);}
 
   <!-- Added exercises -->
   <div id="added-list"></div>
+
+  <!-- STEP 0: Templates -->
+  <div id="step-tmpl">
+    <div class="sec" style="margin-top:0">Quick start</div>
+    <div class="tmpl-grid" id="tmpl-grid"></div>
+    <div class="tmpl-sep"><span>or pick exercise manually</span></div>
+  </div>
 
   <!-- STEP 1: Pick exercise -->
   <div id="step-pick">
@@ -687,6 +712,7 @@ function openLog(){
   document.getElementById('finish-btn').style.display='none';
   document.getElementById('log-search').value='';
   document.getElementById('custom-ex').value='';
+  renderTemplates();
   renderLogTabs('All');filterLogEx();
   document.getElementById('scrim').classList.add('on');
   document.getElementById('sheet').classList.add('on');
@@ -841,17 +867,30 @@ function backToPick(){showPick();}
 
 function addExercise(){
   if(!picked){toast('Pick an exercise first');return;}
-  const t=picked.t;const sets=[];
+  const t=picked.t;
+  const sets=[];
   document.querySelectorAll('#set-rows .set-row-item').forEach(row=>{
-    const r=parseInt(row.querySelector('.r-in')?.value||0);
-    if(t==='bw'){if(r>0)sets.push({r});}
-    else{const w=parseFloat(row.querySelector('.w-in')?.value||0);if(r>0)sets.push({w,r});}
+    const rInput=row.querySelector('.r-in');
+    const wInput=row.querySelector('.w-in');
+    const r=parseInt(rInput?.value||'0');
+    if(t==='bw'){
+      if(r>0) sets.push({r});
+    } else {
+      const wVal=wInput?.value;
+      const w=(wVal===''||wVal===null||wVal===undefined)?0:parseFloat(wVal);
+      if(r>0) sets.push({w:isNaN(w)?0:w, r});
+    }
   });
-  if(!sets.length){toast('Enter at least one set');return;}
+  if(!sets.length){
+    toast('Fill in reps for at least one set');
+    return;
+  }
   const notes=document.getElementById('ex-note').value.trim();
-  draft.exercises.push({name:picked.n,sets,notes});
-  renderAdded();toast(picked.n+' added ✓');
-  picked=null;showPick();
+  draft.exercises.push({name:picked.n, sets, notes});
+  renderAdded();
+  toast(picked.n+' added ✓');
+  picked=null;
+  showPick();
   document.getElementById('log-search').value='';
   document.getElementById('custom-ex').value='';
   filterLogEx();
@@ -873,9 +912,21 @@ function renderAdded(){
   }).join('');
 }
 function finishWorkout(){
-  if(!draft||!draft.exercises.length){toast('Add an exercise first');return;}
-  draft.id=uid();DB.sessions.push(draft);save(DB);
-  closeLog();renderHistory();go('history');toast('Workout saved 💪');
+  if(!draft||!draft.exercises.length){
+    toast('Add an exercise first');
+    return;
+  }
+  try{
+    draft.id=uid();
+    DB.sessions.push(draft);
+    save(DB);
+    closeLog();
+    renderHistory();
+    go('history');
+    toast('Workout saved 💪');
+  }catch(e){
+    alert('Could not save: '+e.message);
+  }
 }
 
 /* ════════════════════
@@ -986,6 +1037,129 @@ function dl(content,name,type){
 /* ════════════════════
    INIT
 ════════════════════ */
+
+/* ════════════════════
+   WORKOUT TEMPLATES
+════════════════════ */
+const TEMPLATES = [
+  {
+    id:'d1', day:'Day 1', name:'Legs', type:'legs',
+    exercises:[
+      {n:'Squat',t:'bb',sets:4},
+      {n:'Romanian Deadlift',t:'bb',sets:3},
+      {n:'Leg Press',t:'bb',sets:3},
+      {n:'Bulgarian Split Squat',t:'db',sets:3},
+      {n:'Leg Curl',t:'bb',sets:3},
+      {n:'Calf Raise',t:'bb',sets:3},
+      {n:'Hanging Leg Raise',t:'bw',sets:3},
+    ]
+  },
+  {
+    id:'d2', day:'Day 2', name:'Push', type:'push',
+    exercises:[
+      {n:'Overhead Press',t:'bb',sets:4},
+      {n:'Incline Dumbbell Press',t:'db',sets:3},
+      {n:'Bench Press',t:'bb',sets:3},
+      {n:'Lateral Raise',t:'db',sets:4},
+      {n:'Cable Fly',t:'bb',sets:3},
+      {n:'Rope Pushdown',t:'bb',sets:3},
+      {n:'Hanging Leg Raise',t:'bw',sets:3},
+    ]
+  },
+  {
+    id:'d3', day:'Day 3', name:'Pull', type:'pull',
+    exercises:[
+      {n:'Barbell Row',t:'bb',sets:4},
+      {n:'Lat Pulldown',t:'bb',sets:3},
+      {n:'Seated Cable Row',t:'bb',sets:3},
+      {n:'Face Pull',t:'bb',sets:3},
+      {n:'Barbell Curl',t:'bb',sets:3},
+      {n:'Hammer Curl',t:'db',sets:3},
+      {n:'Cable Crunch',t:'bb',sets:3},
+    ]
+  },
+  {
+    id:'d4', day:'Day 4', name:'Legs + Core', type:'legs',
+    exercises:[
+      {n:'Hip Thrust',t:'bb',sets:4},
+      {n:'Front Squat',t:'bb',sets:3},
+      {n:'Walking Lunge',t:'db',sets:3},
+      {n:'Seated Leg Curl',t:'bb',sets:3},
+      {n:'Leg Extension',t:'bb',sets:3},
+      {n:'Cable Crunch',t:'bb',sets:3},
+      {n:'Hanging Leg Raise',t:'bw',sets:3},
+    ]
+  },
+  {
+    id:'d5', day:'Day 5', name:'Push', type:'push',
+    exercises:[
+      {n:'Dumbbell Shoulder Press',t:'db',sets:4},
+      {n:'Bench Press',t:'bb',sets:3},
+      {n:'Incline Dumbbell Press',t:'db',sets:3},
+      {n:'Lateral Raise',t:'db',sets:5},
+      {n:'Rear Delt Fly',t:'db',sets:3},
+      {n:'Skull Crushers',t:'bb',sets:3},
+      {n:'Hanging Leg Raise',t:'bw',sets:3},
+    ]
+  },
+  {
+    id:'d6', day:'Day 6', name:'Pull', type:'pull',
+    exercises:[
+      {n:'Deadlift',t:'bb',sets:4},
+      {n:'Wide-Grip Lat Pulldown',t:'bb',sets:4},
+      {n:'Dumbbell Row',t:'db',sets:3},
+      {n:'Straight-Arm Pulldown',t:'bb',sets:3},
+      {n:'Face Pull',t:'bb',sets:3},
+      {n:'Incline Dumbbell Curl',t:'db',sets:3},
+      {n:'Cable Crunch',t:'bb',sets:3},
+    ]
+  },
+];
+
+function renderTemplates(){
+  const grid = document.getElementById('tmpl-grid');
+  grid.innerHTML = TEMPLATES.map(t => {
+    const names = t.exercises.map(e=>e.n);
+    const preview = names.slice(0,3).join(' · ');
+    return `<button class="tmpl-card ${t.type}" onclick="loadTemplate('${t.id}')">
+      <div class="tc-day">${t.day}</div>
+      <div class="tc-name">${t.name}</div>
+      <div class="tc-exs">${preview}&hellip;</div>
+    </button>`;
+  }).join('');
+}
+
+function loadTemplate(id){
+  const tmpl = TEMPLATES.find(t=>t.id===id);
+  if(!tmpl) return;
+  draft.exercises = [];
+  tmpl.exercises.forEach(ex => {
+    const type = ex.t;
+    const numSets = ex.sets || 3;
+    // prefill last session values if available
+    const lastSets = getLastSets(ex.n);
+    const sets = Array(numSets).fill(null).map((_,i) => {
+      if(lastSets && lastSets[i]) return {...lastSets[i]};
+      return type==='bw' ? {r:0} : {w:0, r:0};
+    });
+    draft.exercises.push({name:ex.n, sets, notes:''});
+  });
+  renderAdded();
+  document.getElementById('finish-btn').style.display='block';
+  document.getElementById('finish-btn').textContent='Save workout · '+draft.exercises.length+' exercises';
+  document.getElementById('sheet').scrollTop=0;
+  toast(tmpl.day+' — '+tmpl.name+' loaded ✓');
+}
+
+function getLastSets(name){
+  const sessions=[...DB.sessions].sort((a,b)=>b.date.localeCompare(a.date));
+  for(const s of sessions){
+    const ex=s.exercises.find(e=>e.name.toLowerCase()===name.toLowerCase());
+    if(ex && ex.sets && ex.sets.length) return ex.sets;
+  }
+  return null;
+}
+
 function renderAll(){renderHistory();renderProfile();}
 
 // Today label
@@ -1007,6 +1181,7 @@ if('serviceWorker' in navigator){
 renderLib('All','');
 renderLogTabs('All');
 filterLogEx();
+renderTemplates();
 renderAll();
 </script>
 </body>
